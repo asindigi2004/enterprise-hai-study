@@ -1,7 +1,6 @@
 import sqlite3
 import chromadb
 import requests
-import json
 
 DB_PATH = "data/business.db"
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -33,7 +32,6 @@ def seed_vectors():
     docs = [r[1] for r in rows]
     metas = [{"product": r[2], "region": r[3]} for r in rows]
 
-    # only add if collection is empty
     if collection.count() == 0:
         embeddings = [get_embedding(d) for d in docs]
         collection.add(
@@ -47,13 +45,14 @@ def seed_vectors():
 
 def sql_query(question):
     """Ask Ollama to write SQL, run it, return results."""
-    prompt = f"""You are a SQL expert. The database has a table called complaints with columns:
-id, customer, product, issue, region, resolved (0 or 1).
+    prompt = f"""Table: complaints
+Columns: id, customer, product, issue, region, resolved
+resolved is 0 (unresolved) or 1 (resolved).
+regions are: North, South, East, West.
 
-Write a single SQL SELECT query to answer this question. 
-Return ONLY the SQL query, nothing else, no explanation, no markdown.
-
-Question: {question}"""
+Write ONE simple SQL SELECT query only. No explanation. No markdown. No joins.
+Question: {question}
+SQL:"""
 
     resp = requests.post(OLLAMA_URL, json={
         "model": MODEL,
@@ -62,6 +61,7 @@ Question: {question}"""
     })
     sql = resp.json()["response"].strip()
     sql = sql.replace("```sql", "").replace("```", "").strip()
+    sql = sql.split(";")[0].strip() + ";"
     print(f"\n[SQL generated]: {sql}")
 
     try:
@@ -108,11 +108,11 @@ if __name__ == "__main__":
     print("Seeding vectors...")
     seed_vectors()
 
-    # Question 1 — exact filter, SQL should win
+    # Question 1 - exact filter, SQL should win
     ask("show me all unresolved complaints from North region")
 
-    # Question 2 — semantic intent, semantic search should win
-    ask("find complaints about drinks that lost their fizz or carbonation")
+    # Question 2 - semantic intent, semantic search should win
+    ask("find complaints about drinks that lost their fizz")
 
-    # Question 3 — ambiguous, see what each does
+    # Question 3 - ambiguous, see what each does
     ask("what packaging problems have customers reported")
