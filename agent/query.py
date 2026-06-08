@@ -116,3 +116,6 @@ if __name__ == "__main__":
 
     # Question 3 - ambiguous, see what each does
     ask("what packaging problems have customers reported")
+
+    # Question 4 - requires aggregation/grouping, tests model limits
+    ask("which product has the most complaints")
